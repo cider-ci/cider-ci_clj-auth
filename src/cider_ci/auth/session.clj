@@ -6,10 +6,11 @@
 (ns cider-ci.auth.session
   (:require
     [cider-ci.utils.debug :as debug]
+    [cider-ci.utils.rdbms :as rdbms]
     [cider-ci.utils.with :as with]
     [clj-logging-config.log4j :as logging-config]
-    [clojure.tools.logging :as logging]
     [clojure.java.jdbc :as jdbc]
+    [clojure.tools.logging :as logging]
     [pandect.core :as pandect]
     )
   (:use 
@@ -25,7 +26,7 @@
 ;### Debug ####################################################################
 
 (defn get-user [user-id]
-  (first (jdbc/query (:ds @conf)
+  (first (jdbc/query (rdbms/get-ds)
               ["SELECT * FROM users 
                 WHERE id= ?::UUID" user-id])))
 

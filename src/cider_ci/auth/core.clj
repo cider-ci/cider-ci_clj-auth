@@ -17,7 +17,47 @@
 (defonce conf (atom nil))
 
 
-;### Debug ####################################################################
+
+;##### wrap auth ############################################################## 
+
+(defn- return-authenticate! [request]
+  {:status 401
+   :headers 
+   {"WWW-Authenticate" 
+    "Basic realm=\"Cider-CI; sign in or provide credentials\""}
+   })
+
+(defn- authenticate-and-authorize-service [request handler] 
+  (cond
+    (:authenticated-service request) (handler request) 
+    :else (return-authenticate! request)))
+
+(defn- authenticate-and-authorize-service-or-user [request handler] 
+  (cond
+    (:authenticated-user request) (handler request)
+    (:authenticated-service request) (handler request) 
+    :else (return-authenticate! request)))
+
+
+;### auth ####################################################################
+
+(defn wrap-authenticate-and-authorize-service-or-user
+  "Check for :authenticated-service and pass on, or interrupt and return 401."
+  [handler]
+  (fn [request]
+    (authenticate-and-authorize-service-or-user request handler)))
+
+
+(defn wrap-authenticate-and-authorize-service 
+  "Check for :authenticated-service and pass on, or interrupt and return 401."
+  [handler]
+  (fn [request]
+    (authenticate-and-authorize-service request handler)))
+
+
+
+
+;### Initialize ##############################################################
 
 (defn initialize [new-conf]
   (reset! conf new-conf)

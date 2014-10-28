@@ -5,6 +5,7 @@
 
 (ns cider-ci.auth.http-basic
   (:require
+    [cider-ci.utils.rdbms :as rdbms]
     [cider-ci.utils.debug :as debug]
     [cider-ci.utils.with :as with]
     [clj-logging-config.log4j :as logging-config]
@@ -26,17 +27,18 @@
 
 (defn get-user [login-or-email]
   (with/suppress-and-log-warn
-    (or (first (jdbc/query 
-                 (:ds @conf)
-                 ["SELECT users.* FROM users 
-                  INNER JOIN email_addresses ON email_addresses.user_id = users.id 
-                  WHERE email_addresses.email_address = ?
-                  LIMIT 1" (lower-case login-or-email)]))
-        (first (jdbc/query 
-                 (:ds @conf)
-                 ["SELECT * FROM users 
-                  WHERE login_downcased = ?
-                  LIMIT 1" (lower-case login-or-email)])))))
+    (when-let [ds (rdbms/get-ds)]
+      (or (first (jdbc/query 
+                   ds 
+                   ["SELECT users.* FROM users 
+                    INNER JOIN email_addresses ON email_addresses.user_id = users.id 
+                    WHERE email_addresses.email_address = ?
+                    LIMIT 1" (lower-case login-or-email)]))
+          (first (jdbc/query 
+                   ds
+                   ["SELECT * FROM users 
+                    WHERE login_downcased = ?
+                    LIMIT 1" (lower-case login-or-email)]))))))
 
 (defn authenticated? [login-or-email password]
   (when-let [user (get-user login-or-email)]
@@ -45,11 +47,11 @@
 
 (defn- authenticate-app-or-user [request]
   (if-let [ba (:basic-auth-request request)]
-    (let [{name :name password :password} ba]
-      (logging/debug [ba,name,password])
-      (if (= password (-> @conf :basic_auth  :secret))
-        (assoc request :authenticated-application {:name name})
-        (if-let [user (authenticated? name password)]
+    (let [{username :username password :password} ba]
+      (logging/debug [ba,username,password])
+      (if (= password (-> @conf :basic_auth  :password))
+        (assoc request :authenticated-service {:username username})
+        (if-let [user (authenticated? username password)]
           (assoc request :authenticated-user user)
           request)))
     request))
@@ -70,7 +72,7 @@
 
 
 (defn wrap   
-  "Adds :authenticated-application or :authenticated-user
+  "Adds :authenticated-service or :authenticated-user
   to the request-map if either authentication was successful." 
   [handler]
   (fn [request]
