@@ -64,7 +64,7 @@
   (if-let [auth-header ((:headers request) "authorization")]
     (try (let [decoded-val (decode-base64 (last (re-find #"^Basic (.*)$" auth-header)))
                [name password] (clojure.string/split (str decoded-val) #":" 2)]
-           (assoc request :basic-auth-request {:name name :password password}))
+           (assoc request :basic-auth-request {:username name :password password}))
          (catch Exception e
            (logging/warn "Failed to extract basic auth properties")
            request))

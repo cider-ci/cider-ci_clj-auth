@@ -1,4 +1,4 @@
-(defproject cider-ci/clj-auth "2.0.0"
+(defproject cider-ci/clj-auth "2.0.1"
   :description "Cider-CI Authentication"
   :url "https://github.com/cider-ci/cider-ci_clj-auth"
   :license {:name "GNU AFFERO GENERAL PUBLIC LICENSE Version 3"
