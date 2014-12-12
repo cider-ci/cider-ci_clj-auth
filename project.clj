@@ -1,10 +1,10 @@
-(defproject cider-ci/clj-auth "2.0.1"
+(defproject cider-ci/clj-auth "2.1.0"
   :description "Cider-CI Authentication"
   :url "https://github.com/cider-ci/cider-ci_clj-auth"
   :license {:name "GNU AFFERO GENERAL PUBLIC LICENSE Version 3"
             :url "http://www.gnu.org/licenses/agpl-3.0.html"}
   :dependencies [
-                 [cider-ci/clj-utils "2.0.0"]
+                 [cider-ci/clj-utils "2.0.1"]
                  [org.clojure/data.codec "0.1.0"]
                  [pandect "0.4.1"]
                  ]

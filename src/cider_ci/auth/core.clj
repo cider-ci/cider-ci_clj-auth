@@ -17,7 +17,6 @@
 (defonce conf (atom nil))
 
 
-
 ;##### wrap auth ############################################################## 
 
 (defn- return-authenticate! [request]
