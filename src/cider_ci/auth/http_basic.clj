@@ -62,29 +62,29 @@
     (get-executor executor-name)))
 
 (defn- authenticate-role [request roles]
-  (if-let [ba (:basic-auth-request request)]
-    (let [{username :username password :password} ba
-          request (atom request)]
-      (logging/debug [ba,username,password])
-      (when (:service roles)
-        (when (password-matches password username) 
-          (swap! request 
-                 (fn [request username]
-                   (assoc request :authenticated-service {:username username})) 
-                 username)))
-      (when (:user roles)
-        (when-let [user (authenticate-user username password)]
-          (swap! request 
-                 (fn [request user]
-                   (assoc request :authenticated-user user)) 
-                 user))) 
-      (when (:executor roles)
-        (when-let [executor (authenticate-executor username password)]
-          (swap! request 
-                 (fn [request executor]
-                   (assoc request :authenticated-executor executor)) 
-                 executor)))
-      @request)))
+  (let [request (atom request)]
+    (if-let [ba (:basic-auth-request @request)]
+      (let [{username :username password :password} ba]
+        (logging/debug [ba,username,password])
+        (when (:service roles)
+          (when (password-matches password username) 
+            (swap! request 
+                   (fn [request username]
+                     (assoc request :authenticated-service {:username username})) 
+                   username)))
+        (when (:user roles)
+          (when-let [user (authenticate-user username password)]
+            (swap! request 
+                   (fn [request user]
+                     (assoc request :authenticated-user user)) 
+                   user))) 
+        (when (:executor roles)
+          (when-let [executor (authenticate-executor username password)]
+            (swap! request 
+                   (fn [request executor]
+                     (assoc request :authenticated-executor executor)) 
+                   executor)))))
+    @request))
 
 (defn- authenticate-app-or-user [request]
   (if-let [ba (:basic-auth-request request)]
