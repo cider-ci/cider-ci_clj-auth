@@ -11,6 +11,7 @@
     [clj-logging-config.log4j :as logging-config]
     [clojure.tools.logging :as logging]
     [clojure.java.jdbc :as jdbc]
+    [pandect.algo.sha1 :refer [sha1-hmac]]
     )
   (:use
     [cider-ci.auth.shared]
@@ -20,8 +21,7 @@
     [bcrypt_jruby BCrypt]
     ))
 
-
-(defonce conf (atom nil))
+(def ^:dynamic get-conf (fn [] {}))
 
 ;### Http Basic Authentication ################################################
 
@@ -40,18 +40,59 @@
                     WHERE login_downcased = ?
                     LIMIT 1" (lower-case login-or-email)]))))))
 
-(defn authenticated? [login-or-email password]
+(defn authenticate-user [login-or-email password]
   (when-let [user (get-user login-or-email)]
     (when (BCrypt/checkpw password  (:password_digest user))
       user)))
+
+(defn password-matches [password username]
+  (or (= password (-> (get-conf) :basic_auth  :password))
+      (= password (sha1-hmac username (:secret (get-conf))))))
+
+;(sha1-hmac "DemoExecutor" "secret")
+
+(defn get-executor [executor-name]
+  (first (jdbc/query 
+           (rdbms/get-ds)
+           ["SELECT * FROM executors WHERE name = ?" executor-name]
+           )))
+
+(defn authenticate-executor [executor-name password-digest]
+  (when (password-matches password-digest executor-name)
+    (get-executor executor-name)))
+
+(defn- authenticate-role [request roles]
+  (if-let [ba (:basic-auth-request request)]
+    (let [{username :username password :password} ba
+          request (atom request)]
+      (logging/debug [ba,username,password])
+      (when (:service roles)
+        (when (password-matches password username) 
+          (swap! request 
+                 (fn [request username]
+                   (assoc request :authenticated-service {:username username})) 
+                 username)))
+      (when (:user roles)
+        (when-let [user (authenticate-user username password)]
+          (swap! request 
+                 (fn [request user]
+                   (assoc request :authenticated-user user)) 
+                 user))) 
+      (when (:executor roles)
+        (when-let [executor (authenticate-executor username password)]
+          (swap! request 
+                 (fn [request executor]
+                   (assoc request :authenticated-executor executor)) 
+                 executor)))
+      @request)))
 
 (defn- authenticate-app-or-user [request]
   (if-let [ba (:basic-auth-request request)]
     (let [{username :username password :password} ba]
       (logging/debug [ba,username,password])
-      (if (= password (-> @conf :basic_auth  :password))
+      (if (= password (-> (get-conf) :basic_auth  :password))
         (assoc request :authenticated-service {:username username})
-        (if-let [user (authenticated? username password)]
+        (if-let [user (authenticate-user username password)]
           (assoc request :authenticated-user user)
           request)))
     request))
@@ -70,21 +111,28 @@
            request))
     request))
 
-
 (defn wrap   
-  "Adds :authenticated-service or :authenticated-user
-  to the request-map if either authentication was successful." 
-  [handler]
-  (fn [request]
-    (-> request
-        extract-and-add-basic-auth-properties
-        authenticate-app-or-user
-        handler)))
+  ([handler] ; TODO, DEPRECATED remove 
+   (logging/warn " DEPRECATED, add the roles argument to http-basic/wrap ")
+   (fn [request]
+     (-> request
+         extract-and-add-basic-auth-properties
+         authenticate-app-or-user
+         handler)))
+  ([handler roles]
+   (fn [request]
+     (-> request
+         extract-and-add-basic-auth-properties
+         (authenticate-role roles)
+         handler))))
 
+(defn initialize [get-conf-fn]
+  (if (map? get-conf-fn)
+    (def ^:dynamic get-conf (fn [] get-conf-fn)) ; TODO, remove with version 3.0.0 
+    (def ^:dynamic get-conf get-conf-fn)))
 
-(defn initialize [new-conf]
-  (reset! conf new-conf))
-
+;(initialize {:y 42})
+;(initialize (fn [] {:x 7}))
 
 ;### Debug ####################################################################
 ;(debug/debug-ns *ns*)
