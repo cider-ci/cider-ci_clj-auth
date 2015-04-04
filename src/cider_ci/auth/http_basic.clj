@@ -32,12 +32,12 @@
                    ds 
                    ["SELECT users.* FROM users 
                     INNER JOIN email_addresses ON email_addresses.user_id = users.id 
-                    WHERE email_addresses.email_address = ?
+                    WHERE lower(email_addresses.email_address) = lower(?)
                     LIMIT 1" (lower-case login-or-email)]))
           (first (jdbc/query 
                    ds
                    ["SELECT * FROM users 
-                    WHERE login_downcased = ?
+                    WHERE lower(login) = lower(?)
                     LIMIT 1" (lower-case login-or-email)]))))))
 
 (defn authenticate-user [login-or-email password]
