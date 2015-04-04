@@ -14,3 +14,5 @@
   (with/suppress-and-log-warn
     (apply str (map char (base64/decode (.getBytes string))))))
 
+
+;(decode-base64 "eA==")

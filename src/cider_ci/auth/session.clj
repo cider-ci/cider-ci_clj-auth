@@ -8,64 +8,46 @@
     [cider-ci.utils.debug :as debug]
     [cider-ci.utils.rdbms :as rdbms]
     [cider-ci.utils.with :as with]
-    [clj-logging-config.log4j :as logging-config]
+    [cider-ci.utils.config :as config :refer [get-config]]
     [clojure.java.jdbc :as jdbc]
     [clojure.tools.logging :as logging]
-    [pandect.core :as pandect]
-    )
-  (:use 
-    [clojure.walk :only [keywordize-keys]]
-    [clojure.string :only [split]]
-    [cider-ci.auth.shared :only [decode-base64]]
+    [cider-ci.open-session.encryptor :refer [decrypt]]
+    [cider-ci.open-session.signature :refer [validate!]]
+    [clojure.walk :refer [keywordize-keys]]
     ))
 
 
 
-(defonce conf (atom nil))
-
 ;### Debug ####################################################################
 
-(defn get-user [user-id]
-  (first (jdbc/query (rdbms/get-ds)
-              ["SELECT * FROM users 
-                WHERE id= ?::UUID" user-id])))
+(defn get-user! [user-id]
+  (or (first (jdbc/query (rdbms/get-ds)
+                         ["SELECT * FROM users 
+                          WHERE id= ?::UUID" user-id]))
+      (throw (IllegalStateException. (str "User for " user-id " not found")))))
 
-(defn compute-signature [message secret1 secret2]
-  (-> message 
-      (pandect/sha1-hmac secret1)
-      (pandect/sha1-hmac secret2)))
+(defn get-session-secret []
+  (-> (get-config) :session :secret))
 
 (defn authenticate-session-cookie [request handler]
   (if-let [services-cookie (-> request keywordize-keys :cookies :cider-ci_services-session :value)]
     (try (logging/debug services-cookie)
-         (let [[cookie-message cookie-signature] (split services-cookie #"-")
-               user-id (decode-base64 cookie-message)
-               user (get-user user-id)
-               signature (compute-signature cookie-message
-                                            (:password_digest user) 
-                                            (-> @conf :session :secret))]
-           (if (= cookie-signature signature)
-             (handler (assoc request :authenticated-user user))
-             (throw (IllegalStateException. "Cookie validation failed."))))
+         (let [session-object (decrypt (get-session-secret) services-cookie)
+               user (-> session-object :user_id get-user!)]
+           (validate! (-> session-object :signature)
+                      (get-session-secret)
+                      (-> user :password_digest))
+           (handler (assoc request :authenticated-user user)))
          (catch Exception e
            (logging/warn e)
-           (handler request)
-           ))
+           (handler request)))
     (handler request)))
 
 (defn wrap [handler]
   (fn [request]
     (authenticate-session-cookie request handler)))
 
-
 ;### Debug ####################################################################
-
-(defn initialize [new-conf]
-  (reset! conf new-conf))
-
-
-;### Debug ####################################################################
-;(debug/debug-ns *ns*)
 ;(logging-config/set-logger! :level :debug)
 ;(logging-config/set-logger! :level :info)
-
+;(debug/debug-ns *ns*)

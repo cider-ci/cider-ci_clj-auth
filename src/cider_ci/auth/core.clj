@@ -6,7 +6,6 @@
 (ns cider-ci.auth.core
   (:require
     [cider-ci.auth.http-basic :as http-basic]
-    [cider-ci.auth.session :as session]
     [cider-ci.utils.debug :as debug]
     [cider-ci.utils.with :as with]
     [clj-logging-config.log4j :as logging-config]
@@ -60,7 +59,6 @@
 
 (defn initialize [new-conf]
   (reset! conf new-conf)
-  (session/initialize @conf)
   (http-basic/initialize @conf))
 
 
