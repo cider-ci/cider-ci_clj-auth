@@ -8,7 +8,6 @@
                  [cider-ci/open-session "1.0.0"]
                  ]
   :source-paths ["src"]
-  :java-source-paths ["lib/bcrypt-ruby/ext/jruby"] 
 
   :repositories [["tmp" {:url "http://maven-repo-tmp.drtom.ch" :snapshots false}]]
   :plugins [[org.apache.maven.wagon/wagon-ssh-external "2.6"]]
