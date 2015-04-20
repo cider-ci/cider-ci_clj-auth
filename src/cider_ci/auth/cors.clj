@@ -24,10 +24,12 @@
                                           (-> request :headers (get "origin"))
                                           (let [scheme  (-> request :scheme name)
                                                 host  (-> request :headers (get "host"))]
-                                            (when (and scheme host)
-                                              (str scheme "://" host)))
+                                            (when (and scheme host) (str scheme "://" host)))
                                           "*"))
         (response/header
-          "Access-Control-Allow-Credentials" "true"))))
+          "Access-Control-Allow-Credentials" "true")
+        (response/header
+          "Access-Control-Allow-Headers" "*")
+        )))
 
 
