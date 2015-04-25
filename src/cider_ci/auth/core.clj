@@ -6,8 +6,8 @@
 (ns cider-ci.auth.core
   (:require
     [cider-ci.auth.http-basic :as http-basic]
-    [cider-ci.utils.debug :as debug]
-    [cider-ci.utils.with :as with]
+    [drtom.logbug.debug :as debug]
+    [drtom.logbug.catcher :as catcher]
     [clj-logging-config.log4j :as logging-config]
     [clojure.tools.logging :as logging]
     ))

@@ -4,7 +4,7 @@
 
 (ns cider-ci.auth.cors
   (:require
-    [cider-ci.utils.debug :as debug]
+    [drtom.logbug.debug :as debug]
     [clj-logging-config.log4j :as logging-config]
     [clojure.tools.logging :as logging]
     [ring.util.response :as response]

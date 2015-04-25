@@ -5,20 +5,16 @@
 
 (ns cider-ci.auth.http-basic
   (:require
+    [cider-ci.open-session.encoder :refer [decode]]
+    [cider-ci.open-session.bcrypt :refer [checkpw]]
     [cider-ci.utils.rdbms :as rdbms]
-    [cider-ci.utils.debug :as debug]
-    [cider-ci.utils.with :as with]
     [clj-logging-config.log4j :as logging-config]
-    [clojure.tools.logging :as logging]
     [clojure.java.jdbc :as jdbc]
+    [clojure.string :refer [lower-case]]
+    [clojure.tools.logging :as logging]
+    [drtom.logbug.catcher :as catcher]
+    [drtom.logbug.debug :as debug]
     [pandect.algo.sha1 :refer [sha1-hmac]]
-    )
-  (:use
-    [cider-ci.auth.shared]
-    [clojure.string :only [lower-case]]
-    )
-  (:import 
-    [bcrypt_jruby BCrypt]
     ))
 
 (def ^:dynamic get-conf (fn [] {}))
@@ -26,7 +22,7 @@
 ;### Http Basic Authentication ################################################
 
 (defn get-user [login-or-email]
-  (with/suppress-and-log-warn
+  (catcher/wrap-with-suppress-and-log-warn
     (when-let [ds (rdbms/get-ds)]
       (or (first (jdbc/query 
                    ds 
@@ -42,7 +38,7 @@
 
 (defn authenticate-user [login-or-email password]
   (when-let [user (get-user login-or-email)]
-    (when (BCrypt/checkpw password  (:password_digest user))
+    (when (checkpw password (:password_digest user))
       user)))
 
 (defn password-matches [password username]
@@ -103,7 +99,7 @@
   {:name name :password password}."  
   [request]
   (if-let [auth-header ((:headers request) "authorization")]
-    (try (let [decoded-val (decode-base64 (last (re-find #"^Basic (.*)$" auth-header)))
+    (try (let [decoded-val (decode (last (re-find #"^Basic (.*)$" auth-header)))
                [name password] (clojure.string/split (str decoded-val) #":" 2)]
            (assoc request :basic-auth-request {:username name :password password}))
          (catch Exception e

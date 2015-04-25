@@ -5,9 +5,9 @@
 
 (ns cider-ci.auth.session
   (:require
-    [cider-ci.utils.debug :as debug]
+    [drtom.logbug.debug :as debug]
     [cider-ci.utils.rdbms :as rdbms]
-    [cider-ci.utils.with :as with]
+    [drtom.logbug.catcher :as catcher]
     [cider-ci.utils.config :as config :refer [get-config]]
     [clojure.java.jdbc :as jdbc]
     [clojure.tools.logging :as logging]
