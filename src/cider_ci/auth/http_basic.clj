@@ -5,10 +5,11 @@
 
 (ns cider-ci.auth.http-basic
   (:require
-    [cider-ci.open-session.encoder :refer [decode]]
     [cider-ci.open-session.bcrypt :refer [checkpw]]
+    [cider-ci.open-session.encoder :refer [decode]]
     [cider-ci.utils.rdbms :as rdbms]
     [clj-logging-config.log4j :as logging-config]
+    [clojure.data.codec.base64 :as base64]
     [clojure.java.jdbc :as jdbc]
     [clojure.string :refer [lower-case]]
     [clojure.tools.logging :as logging]
@@ -93,13 +94,17 @@
           request)))
     request))
 
+(defn- decode-base64
+  [^String string]
+  (apply str (map char (base64/decode (.getBytes string)))))
+
 (defn- extract-and-add-basic-auth-properties 
   "Extracts information from the \"authorization\" header and
   adds a :basic-auth-request key to the request with the value 
   {:name name :password password}."  
   [request]
   (if-let [auth-header ((:headers request) "authorization")]
-    (try (let [decoded-val (decode (last (re-find #"^Basic (.*)$" auth-header)))
+    (try (let [decoded-val (decode-base64 (last (re-find #"^Basic (.*)$" auth-header)))
                [name password] (clojure.string/split (str decoded-val) #":" 2)]
            (assoc request :basic-auth-request {:username name :password password}))
          (catch Exception e
