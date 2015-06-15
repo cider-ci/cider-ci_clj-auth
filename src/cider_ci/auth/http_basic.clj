@@ -44,7 +44,9 @@
 
 (defn password-matches [password username]
   (or (= password (-> (get-conf) :basic_auth  :password))
-      (= password (sha1-hmac username (:secret (get-conf))))))
+      (when-let [secret (:secret (get-conf))]
+                 (and username
+                      (= password (sha1-hmac username secret))))))
 
 ;(sha1-hmac "DemoExecutor" "secret")
 
